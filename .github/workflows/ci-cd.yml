@@ -4,10 +4,18 @@ on:
   push:
     branches:
       - main
-      - qa
   pull_request:
     branches:
       - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   # ─────────────────────────────────────────
@@ -40,7 +48,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Simulate build
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build site
         run: |
           echo "🏗️ Building project..."
           mkdir -p dist
@@ -48,10 +59,9 @@ jobs:
           echo "✅ Build complete. Files in dist/:"
           ls dist/
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: build-output
           path: dist/
 
   # ─────────────────────────────────────────
@@ -71,26 +81,17 @@ jobs:
           echo "✅ All tests passed."
 
   # ─────────────────────────────────────────
-  # JOB 4: Deploy (solo en main)
+  # JOB 4: Deploy a GitHub Pages (solo main)
   # ─────────────────────────────────────────
   deploy:
-    name: 🚀 Deploy to Production
+    name: 🚀 Deploy to GitHub Pages
     runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment:
-      name: production
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build-output
-          path: dist/
-
-      - name: Deploy
-        run: |
-          echo "🚀 Deploying to production..."
-          echo "✅ Deploy successful!"
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
